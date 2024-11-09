@@ -11,6 +11,7 @@ import java.io.*;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.security.SecureRandom;
+import java.util.Base64;
 
 public class ImageEncryptionGUI {
     private JFrame frame;
@@ -18,6 +19,8 @@ public class ImageEncryptionGUI {
     private JButton cifrarButton;
     private JButton descifrarButton;
     private JButton guardarButton;
+    private JButton mostrarHexButton;
+    private JButton mostrarBase64Button;
     private JLabel imageLabel;
     private File selectedImageFile;
     private BufferedImage image;
@@ -30,7 +33,7 @@ public class ImageEncryptionGUI {
     private SecretKey secretKey;
     private IvParameterSpec ivParameterSpec;
     private int imageCounter = 1;
-    private static final String SAVE_PATH = "C:\\Users\\Ascen\\OneDrive\\Documentos\\ShirleyAscencio\\imagenes\\";  // Ruta donde se guardarán las imágenes
+    private static final String SAVE_PATH = "C:\\Users\\MiguelCuadros\\Pictures\\prueba\\";  // Ruta donde se guardarán las imágenes
 
     public static void main(String[] args) {
         EventQueue.invokeLater(() -> {
@@ -84,12 +87,98 @@ public class ImageEncryptionGUI {
         guardarButton.addActionListener(this::saveImage);
         buttonPanel.add(guardarButton);
 
+        // Botón para mostrar en hexadecimal
+        mostrarHexButton = new JButton("Mostrar Hexadecimal");
+        mostrarHexButton.addActionListener(this::mostrarHexadecimal);
+        buttonPanel.add(mostrarHexButton);
+
+        // Botón para mostrar en Base64
+        mostrarBase64Button = new JButton("Mostrar Base64");
+        mostrarBase64Button.addActionListener(this::mostrarBase64);
+        buttonPanel.add(mostrarBase64Button);
+
         imageLabel = new JLabel();
         frame.getContentPane().add(imageLabel, BorderLayout.CENTER);
 
         selectedImageFile = null;
         image = null;
         encryptedImage = null;
+    }
+
+    private void mostrarHexadecimal(ActionEvent e) {
+        BufferedImage img = isEncrypted ? encryptedImage : image;
+        if (img == null) {
+            JOptionPane.showMessageDialog(frame, "No hay imagen disponible para mostrar en hexadecimal.", "Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        String hex = convertImageToHex(img);
+        mostrarEnDialogoScrollable("Código Hexadecimal", hex);
+    }
+
+    private void mostrarBase64(ActionEvent e) {
+        BufferedImage img = isEncrypted ? encryptedImage : image;
+        if (img == null) {
+            JOptionPane.showMessageDialog(frame, "No hay imagen disponible para mostrar en Base64.", "Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        String base64 = convertImageToBase64(img);
+        mostrarEnDialogoScrollable("Código Base64", base64);
+    }
+
+    private void mostrarEnDialogoScrollable(String titulo, String contenido) {
+        // Crear un área de texto con el contenido y hacerla no editable
+        JTextArea textArea = new JTextArea(contenido);
+        textArea.setEditable(false);
+
+        // Crear un JScrollPane para el JTextArea
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setPreferredSize(new Dimension(600, 400));
+
+        // Crear un cuadro de diálogo con el JScrollPane
+        JOptionPane.showMessageDialog(frame, scrollPane, titulo, JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private String convertImageToHex(BufferedImage img) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(img, "jpg", baos);
+            byte[] bytes = baos.toByteArray();
+
+            StringBuilder hexBuilder = new StringBuilder();
+            int lineLength = 64; // Cambia este valor para ajustar la longitud de cada línea
+
+            for (int i = 0; i < bytes.length; i++) {
+                hexBuilder.append(String.format("%02X", bytes[i]));
+                if ((i + 1) % (lineLength / 2) == 0) {  // Cada 16 bytes, añade un salto de línea (32 caracteres)
+                    hexBuilder.append("\n");
+                }
+            }
+            return hexBuilder.toString();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            return "Error al convertir la imagen a hexadecimal.";
+        }
+    }
+
+    private String convertImageToBase64(BufferedImage img) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(img, "jpg", baos);
+            byte[] bytes = baos.toByteArray();
+            String base64String = Base64.getEncoder().encodeToString(bytes);
+
+            StringBuilder formattedBase64 = new StringBuilder();
+            int lineLength = 64; // Cambia este valor para ajustar la longitud de cada línea
+
+            for (int i = 0; i < base64String.length(); i += lineLength) {
+                int end = Math.min(i + lineLength, base64String.length());
+                formattedBase64.append(base64String, i, end).append("\n");
+            }
+            return formattedBase64.toString();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            return "Error al convertir la imagen a Base64.";
+        }
     }
 
     private void loadImage(ActionEvent e) {
@@ -129,26 +218,30 @@ public class ImageEncryptionGUI {
         }
 
         try {
-            // Cifrar la imagen
+            // Cifrar la imagen completa en bloques de línea en lugar de píxeles individuales
             encryptedImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
             Cipher cipher = Cipher.getInstance(ALGORITHM + "/" + MODE + "/" + PADDING);
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivParameterSpec);
 
-            for (int x = 0; x < image.getWidth(); x++) {
-                for (int y = 0; y < image.getHeight(); y++) {
+            for (int y = 0; y < image.getHeight(); y++) {
+                byte[] lineData = new byte[image.getWidth() * 3];
+                for (int x = 0; x < image.getWidth(); x++) {
                     Color color = new Color(image.getRGB(x, y));
-                    byte[] pixelData = new byte[3];
-                    pixelData[0] = (byte) color.getRed();
-                    pixelData[1] = (byte) color.getGreen();
-                    pixelData[2] = (byte) color.getBlue();
+                    int offset = x * 3;
+                    lineData[offset] = (byte) color.getRed();
+                    lineData[offset + 1] = (byte) color.getGreen();
+                    lineData[offset + 2] = (byte) color.getBlue();
+                }
 
-                    // Cifrar los datos del pixel
-                    byte[] encryptedPixel = cipher.doFinal(pixelData);
+                // Cifrar la línea de píxeles completa
+                byte[] encryptedLine = cipher.update(lineData);
 
-                    // Establecer el color cifrado del pixel
-                    int red = encryptedPixel[0] & 0xFF;
-                    int green = encryptedPixel[1] & 0xFF;
-                    int blue = encryptedPixel[2] & 0xFF;
+                // Establecer el color cifrado para cada píxel en la línea
+                for (int x = 0; x < image.getWidth(); x++) {
+                    int offset = x * 3;
+                    int red = encryptedLine[offset] & 0xFF;
+                    int green = encryptedLine[offset + 1] & 0xFF;
+                    int blue = encryptedLine[offset + 2] & 0xFF;
                     encryptedImage.setRGB(x, y, new Color(red, green, blue).getRGB());
                 }
             }
@@ -158,8 +251,7 @@ public class ImageEncryptionGUI {
             imageLabel.setIcon(icon);
             frame.repaint();
 
-            // Limpiar la interfaz para mostrar la imagen cifrada
-            isEncrypted = true;  // La imagen está cifrada
+            isEncrypted = true;
             JOptionPane.showMessageDialog(frame, "¡Imagen cifrada!", "Éxito", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -178,37 +270,36 @@ public class ImageEncryptionGUI {
         }
 
         try {
-            // Descifrar la imagen
             BufferedImage decryptedImage = new BufferedImage(encryptedImage.getWidth(), encryptedImage.getHeight(), BufferedImage.TYPE_INT_RGB);
             Cipher cipher = Cipher.getInstance(ALGORITHM + "/" + MODE + "/" + PADDING);
             cipher.init(Cipher.DECRYPT_MODE, secretKey, ivParameterSpec);
 
-            for (int x = 0; x < encryptedImage.getWidth(); x++) {
-                for (int y = 0; y < encryptedImage.getHeight(); y++) {
+            for (int y = 0; y < encryptedImage.getHeight(); y++) {
+                byte[] encryptedLine = new byte[encryptedImage.getWidth() * 3];
+                for (int x = 0; x < encryptedImage.getWidth(); x++) {
                     Color color = new Color(encryptedImage.getRGB(x, y));
-                    byte[] pixelData = new byte[3];
-                    pixelData[0] = (byte) color.getRed();
-                    pixelData[1] = (byte) color.getGreen();
-                    pixelData[2] = (byte) color.getBlue();
+                    int offset = x * 3;
+                    encryptedLine[offset] = (byte) color.getRed();
+                    encryptedLine[offset + 1] = (byte) color.getGreen();
+                    encryptedLine[offset + 2] = (byte) color.getBlue();
+                }
 
-                    // Descifrar los datos del pixel
-                    byte[] decryptedPixel = cipher.doFinal(pixelData);
+                byte[] decryptedLine = cipher.update(encryptedLine);
 
-                    // Establecer el color descifrado del pixel
-                    int red = decryptedPixel[0] & 0xFF;
-                    int green = decryptedPixel[1] & 0xFF;
-                    int blue = decryptedPixel[2] & 0xFF;
+                for (int x = 0; x < encryptedImage.getWidth(); x++) {
+                    int offset = x * 3;
+                    int red = decryptedLine[offset] & 0xFF;
+                    int green = decryptedLine[offset + 1] & 0xFF;
+                    int blue = decryptedLine[offset + 2] & 0xFF;
                     decryptedImage.setRGB(x, y, new Color(red, green, blue).getRGB());
                 }
             }
 
-            // Mostrar la imagen descifrada
             ImageIcon icon = new ImageIcon(decryptedImage);
             imageLabel.setIcon(icon);
             frame.repaint();
 
-            // Limpiar la interfaz para mostrar la imagen descifrada
-            isEncrypted = false;  // La imagen ahora está descifrada
+            isEncrypted = false;
             JOptionPane.showMessageDialog(frame, "¡Imagen descifrada!", "Éxito", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
             ex.printStackTrace();
