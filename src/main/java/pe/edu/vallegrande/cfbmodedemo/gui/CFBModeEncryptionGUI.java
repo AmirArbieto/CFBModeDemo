@@ -1,4 +1,4 @@
-package pe.edu.vallegrande.cfbmodedemo;
+package pe.edu.vallegrande.cfbmodedemo.gui;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -10,14 +10,14 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Base64;
 
-public class CFBModeGUI extends JFrame {
+public class CFBModeEncryptionGUI extends JFrame {
 
     private JTextField inputField;
     private JTextArea outputArea;
     private SecretKey secretKey;
     private IvParameterSpec iv;
 
-    public CFBModeGUI() {
+    public CFBModeEncryptionGUI() {
         // Configuración básica de la ventana
         setTitle("Cifrado CFB Demo");
         setSize(400, 300);
@@ -117,7 +117,7 @@ public class CFBModeGUI extends JFrame {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                new CFBModeGUI().setVisible(true);
+                new CFBModeEncryptionGUI().setVisible(true);
             }
         });
     }

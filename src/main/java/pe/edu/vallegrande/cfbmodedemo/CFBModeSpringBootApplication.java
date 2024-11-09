@@ -4,10 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class CfbModeDemoApplication {
+public class CFBModeSpringBootApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(CfbModeDemoApplication.class, args);
+		SpringApplication.run(CFBModeSpringBootApplication.class, args);
 	}
 
 }

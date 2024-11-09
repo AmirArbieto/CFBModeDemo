@@ -1,4 +1,4 @@
-package pe.edu.vallegrande.cfbmodedemo;
+package pe.edu.vallegrande.cfbmodedemo.console;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -6,7 +6,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import java.util.Base64;
 
-public class CFBModeDemo {
+public class CFBModeConsoleDemo {
 
     // Método para generar una clave secreta (AES)
     public static SecretKey generateSecretKey() throws Exception {
